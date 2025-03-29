@@ -1,102 +1,108 @@
-import User from "../models/User.js"
-import jwt from "jsonwebtoken"
-import { validationResult } from "express-validator"
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import { validationResult } from 'express-validator';
 
-// @route   POST api/auth/register
-// @desc    Register a user
+// @desc    Register a new user
+// @route   POST /api/auth/register
 // @access  Public
 export const registerUser = async (req, res) => {
-  // Validate request
-  const errors = validationResult(req)
+  const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() })
+    return res.status(400).json({ errors: errors.array() });
   }
 
-  const { name, email, password } = req.body
+  const { name, email, password } = req.body;
 
   try {
-    // Check if user already exists
-    let user = await User.findOne({ email })
+    let user = await User.findOne({ email });
+
     if (user) {
-      return res.status(400).json({ message: "User already exists" })
+      return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create new user
     user = new User({
       name,
       email,
-      password,
-    })
+      password
+    });
 
-    // Save user to database
-    await user.save()
+    await user.save();
 
-    // Create JWT token
     const payload = {
-      id: user.id,
-    }
+      user: {
+        id: user.id
+      }
+    };
 
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "15d" }, (err, token) => {
-      if (err) throw err
-      res.json({ token })
-    })
-  } catch (error) {
-    console.error("Error in registerUser:", error.message)
-    res.status(500).json({ message: "Server error" })
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({ token });
+      }
+    );
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
   }
-}
+};
 
-// @route   POST api/auth/login
 // @desc    Authenticate user & get token
+// @route   POST /api/auth/login
 // @access  Public
 export const loginUser = async (req, res) => {
-  // Validate request
-  const errors = validationResult(req)
+  const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() })
+    return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password } = req.body
+  const { email, password } = req.body;
 
   try {
-    // Check if user exists
-    const user = await User.findOne({ email })
+    let user = await User.findOne({ email });
+
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" })
+      return res.status(400).json({ message: 'Invalid Credentials' });
     }
 
-    // Check password
-    const isMatch = await user.comparePassword(password)
+    const isMatch = await user.comparePassword(password);
+
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" })
+      return res.status(400).json({ message: 'Invalid Credentials' });
     }
 
-    // Create JWT token
     const payload = {
-      id: user.id,
-    }
+      user: {
+        id: user.id
+      }
+    };
 
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" }, (err, token) => {
-      if (err) throw err
-      res.json({ token })
-    })
-  } catch (error) {
-    console.error("Error in loginUser:", error.message)
-    res.status(500).json({ message: "Server error" })
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({ token });
+      }
+    );
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
   }
-}
+};
 
-// @route   GET api/auth/me
 // @desc    Get current user
+// @route   GET /api/auth/me
 // @access  Private
-export const getCurrentUser = async (req, res) => {
+export const getMe = async (req, res) => {
   try {
-    // User is already available from auth middleware
-    const user = await User.findById(req.user.id).select("-password")
-    res.json(user)
-  } catch (error) {
-    console.error("Error in getCurrentUser:", error.message)
-    res.status(500).json({ message: "Server error" })
+    const user = await User.findById(req.user.id).select('-password');
+    res.json(user);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
   }
-}
-
+};
