@@ -5,15 +5,23 @@ import { validationResult } from "express-validator"
 // @desc    Submit contact form
 // @access  Public
 export const submitContactForm = async (req, res) => {
-  // Validate request
-  const errors = validationResult(req)
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() })
-  }
-
-  const { name, email, subject, message } = req.body
-
   try {
+    // Validate request
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: "Validation error", errors: errors.array() })
+    }
+
+    // Log request body for debugging
+    console.log("Contact form submission received:", JSON.stringify(req.body, null, 2))
+
+    const { name, email, subject, message } = req.body
+
+    // Additional validation
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ message: "All fields are required" })
+    }
+
     // Create new contact submission
     const newContact = new Contact({
       name,
@@ -23,12 +31,17 @@ export const submitContactForm = async (req, res) => {
     })
 
     // Save to database
-    await newContact.save()
+    const savedContact = await newContact.save()
+    console.log("Contact form saved successfully with ID:", savedContact._id)
 
-    res.status(201).json({ message: "Thank you for your message. We'll get back to you soon." })
+    res.status(201).json({
+      message: "Thank you for your message. We'll get back to you soon.",
+      success: true,
+      id: savedContact._id,
+    })
   } catch (error) {
-    console.error("Error in submitContactForm:", error.message)
-    res.status(500).json({ message: "Server error" })
+    console.error("Error in submitContactForm:", error)
+    res.status(500).json({ message: "Server error", error: error.message })
   }
 }
 
@@ -40,8 +53,8 @@ export const getContactSubmissions = async (req, res) => {
     const contacts = await Contact.find().sort({ createdAt: -1 })
     res.json(contacts)
   } catch (error) {
-    console.error("Error in getContactSubmissions:", error.message)
-    res.status(500).json({ message: "Server error" })
+    console.error("Error in getContactSubmissions:", error)
+    res.status(500).json({ message: "Server error", error: error.message })
   }
 }
 
